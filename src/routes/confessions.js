@@ -3,6 +3,7 @@ const {
   createConfession,
 } = require("../model/confessions.js");
 const { Layout } = require("../templates.js");
+const { getSession } = require("../model/session.js");
 
 function get(req, res) {
   /**
@@ -14,6 +15,15 @@ function get(req, res) {
    * [4] Get the page owner from the URL params
    * [5] If the logged in user is not the page owner send a 401 response
    */
+  const sid = req.signedCookies.sid;
+  const session = getSession(sid);
+  const user_id = session && session.user_id;
+  const page_owner = req.params.user_id;
+
+  if (user_id !== page_owner) {
+    return res.status(401).send("<h1>Unauthorized access</h1>");
+  }
+
   const confessions = listConfessions(req.params.user_id);
   const title = "Your secrets";
   const content = /*html*/ `
@@ -51,9 +61,17 @@ function post(req, res) {
    * [4] Use the user ID to create the confession in the DB
    * [5] Redirect back to the logged in user's confession page
    */
-  const current_user = Number(req.params.user_id);
-  createConfession(req.body.content, current_user);
-  res.redirect(`/confessions/${current_user}`);
+  const sid = req.signedCookies.sid;
+  const session = getSession(sid);
+  const user_id = session && session.user_id;
+
+  if (!user_id) {
+    return res.status(401).send("<h1>Unauthorized access</h1>");
+  }
+
+  createConfession(req.body.content, user_id);
+
+  res.redirect(`/confessions/${user_id}`);
 }
 
 module.exports = { get, post };

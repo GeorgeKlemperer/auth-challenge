@@ -1,4 +1,8 @@
+const { createUser } = require("../model/user.js");
 const { Layout } = require("../templates.js");
+const bcrypt = require("bcryptjs");
+const { createSession } = require("../model/session.js");
+// const { response } = require("express");
 
 function get(req, res) {
   const title = "Create an account";
@@ -27,7 +31,18 @@ function post(req, res) {
   if (!email || !password) {
     res.status(400).send("Bad input");
   } else {
-    res.send("to-do");
+    bcrypt.hash(password, 12).then((hash) => {
+      const user = createUser(email, hash);
+      const sid = createSession(user.id);
+      res.cookie("sid", sid, {
+        signed: true,
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+        sameSite: "lax",
+        httpOnly: true,
+      });
+      res.redirect(`/confessions/${user.id}`);
+    });
+
     /**
      * [1] Hash the password
      * [2] Create the user in the DB
